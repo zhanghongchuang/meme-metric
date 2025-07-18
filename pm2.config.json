@@ -1,0 +1,21 @@
+{
+  "apps": [
+    {
+      "name": "meme-metric",
+      "script": "dist/main.js",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS",
+      "min_uptime": "200s",
+      "max_restarts": 10,
+      "ignore_watch": ["node_modules", "logs"],
+      "exec_interpreter": "node",
+      "exec_mode": "fork",
+      "autorestart": true,
+      "error_file": "./logs/error.log",
+      "out_file": "./logs/out.log",
+      "merge_logs": true,
+      "env": {
+        "TZ": "Asia/Shanghai"
+      }
+    }
+  ]
+}

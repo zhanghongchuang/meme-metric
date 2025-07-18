@@ -1,0 +1,6 @@
+ {"[typescript]": {
+    "editor.formatOnSave": true,
+    "editor.showUnused": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+  }
