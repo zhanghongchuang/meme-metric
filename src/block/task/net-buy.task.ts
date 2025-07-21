@@ -49,8 +49,8 @@ const MIN_VOLUME_MAP = {
 
 const TIMERANGES = [
     NetBuySurgeTimeRange.FIFTEEN_SECONDS,
-    NetBuySurgeTimeRange.ONE_MINUTE,
-    NetBuySurgeTimeRange.THREE_MINUTES
+    // NetBuySurgeTimeRange.ONE_MINUTE,
+    // NetBuySurgeTimeRange.THREE_MINUTES
 ];
 
 export class NetByVolumeTask extends BaseTask{

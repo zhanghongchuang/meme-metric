@@ -2,6 +2,20 @@ import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 import { CommonEntity } from './common.entity';
 
 export const SMART_USER_UNIQUE_COLUMNS = ['wallet_address'];
+export const SMART_USER_COLUMNS = [
+  'updated_at',
+  'wallet_address',
+  'sync_status',
+  'total_buy_volume',
+  'total_sell_volume',
+  'realized_pnL',
+  'buy_count',
+  'sell_count',
+  'last_active_time',
+  'sync_id',
+  'total_sold_cost',
+  'create_time',
+];
 
 @Entity('smart_users_v2')
 @Index(SMART_USER_UNIQUE_COLUMNS, { unique: true })
@@ -44,7 +58,7 @@ export class SmartUserEntity extends CommonEntity {
   total_sell_volume: number;
 
   @Column('decimal', {
-    precision: 36,
+    precision: 65,
     scale: 18,
     comment: '买入总数量',
     default: 0,
@@ -52,7 +66,7 @@ export class SmartUserEntity extends CommonEntity {
   total_buy_amount: number;
 
   @Column('decimal', {
-    precision: 36,
+    precision: 65,
     scale: 18,
     comment: '卖出总数量',
     default: 0,
@@ -66,6 +80,13 @@ export class SmartUserEntity extends CommonEntity {
     default: 0,
   })
   realized_pnL: number;
+  @Column('decimal', {
+    precision: 36,
+    scale: 18,
+    comment: '每笔卖出操作的买入成本，用于计算已实现收益率',
+    default: 0,
+  })
+  total_sold_cost: number;
 
   @Column('int', { comment: '买入次数', default: 0 })
   buy_count: number;
@@ -78,7 +99,7 @@ export class SmartUserEntity extends CommonEntity {
 
   @Column('int', { comment: '同步swap表ID', default: 0 })
   sync_id: number;
-  
+
   @Column('int', { comment: '创建时间', default: 0 })
   create_time: number;
 }

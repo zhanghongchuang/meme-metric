@@ -21,66 +21,6 @@ export class BlockCustomer {
   @RabbitSubscribe({
     exchange: SOL_BLOCK_EXCHANGE_NAME,
     routingKey: 'sol',
-    queue: SOL_BLOCK_QUEUE_NAME,
-    queueOptions: {
-        channel: 'channel-multi-block',
-        durable: true,             // ✅ 队列持久化
-        autoDelete: false,
-        // maxPriority: 10,
-    },
-    batchOptions: {
-      size: 2000,
-      timeout: 100,
-    },
-  })
-  async handleSolBlock(info) {
-    try {
-      await this.solService.handleMessage(info);
-    } catch (error) {
-      Logger.error({
-        title: this.constructor.name + '-handleBlock-err',
-        data: { info },
-        error: {
-          data: error?.response?.data ?? [],
-          msg: error?.stack ?? error + '',
-        },
-      });
-    }
-  }
-
-  @RabbitSubscribe({
-    exchange: BSC_BLOCK_EXCHANGE_NAME,
-    routingKey: 'evm:56',
-    queue: BSC_BLOCK_QUEUE_NAME,
-    queueOptions: {
-        channel: 'channel-multi-block',
-        durable: true,             // ✅ 队列持久化
-        autoDelete: false,
-        // maxPriority: 10,
-    },
-    batchOptions: {
-      size: 2000,
-      timeout: 100,
-    },
-  })
-  async handleBscBlock(info) {
-    try {
-      await this.bscService.handleMessage(info);
-    } catch (error) {
-      Logger.error({
-        title: this.constructor.name + '-handleBlock-err',
-        data: { info },
-        error: {
-          data: error?.response?.data ?? [],
-          msg: error?.message ?? error + '',
-        },
-      });
-    }
-  }
-
-  @RabbitSubscribe({
-    exchange: SOL_BLOCK_EXCHANGE_NAME,
-    routingKey: 'sol',
     queue: SOL_METRIC_BLOCK_QUEUE_NAME,
     queueOptions: {
         channel: 'channel-metric',

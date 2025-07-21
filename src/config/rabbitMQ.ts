@@ -12,7 +12,9 @@ export const QUEUE_PREFIX = 'mm-';
 export const SOL_SMARTMONEY_QUEUE_NAME = QUEUE_PREFIX + 'sol_smartmoney_sync';
 export const BSC_SMARTMONEY_QUEUE_NAME =
   QUEUE_PREFIX + 'evm_56_smartmoney_sync';
-
+// 入库队列
+export const SOL_DB_QUEUE_NAME = QUEUE_PREFIX + 'sol_db_sync';
+export const BSC_DB_QUEUE_NAME = QUEUE_PREFIX + 'evm_56_db_sync';
 // block同步
 export const SOL_BLOCK_QUEUE_NAME = QUEUE_PREFIX + 'sol_multi_block_sync';
 export const BSC_BLOCK_QUEUE_NAME = QUEUE_PREFIX + 'evm_56_multi_block_sync';

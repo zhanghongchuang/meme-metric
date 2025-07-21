@@ -7,6 +7,7 @@ import { BlockModule } from './block/block.module';
 import { DatabaseModule } from './database/database.module';
 import { InitScheduleModule } from './schedule/init.schedule.module';
 import { PluginsModule } from './plugins/plugin.module';
+import { DataModule } from './data/data.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { PluginsModule } from './plugins/plugin.module';
     RabbitmqModule,
     BlockModule,
     InitScheduleModule,
+    DataModule,
   ],
   controllers: [],
   providers: [],

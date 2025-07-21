@@ -27,6 +27,7 @@ export const SMART_USER_DAILY_FIELDS = [
   'total_buy_volume',
   'total_sell_volume',
   'realized_pnL',
+  'total_sold_cost',
 ];
 
 @Entity('smart_user_daily')
