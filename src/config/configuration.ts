@@ -235,6 +235,9 @@ export default () => ({
       'channel-metric': {
         prefetchCount: 2000,
       },
+      'channel-savedb': {
+        prefetchCount: 2000,
+      },
     },
     uri: process.env.RABBITMQ_URI,
     connectionInitOptions: { wait: false },
