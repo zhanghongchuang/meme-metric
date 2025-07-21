@@ -129,11 +129,13 @@ export class NetByVolumeTask extends BaseTask{
     private async getTokenInfo(): Promise<TokenInfo> {
         const info = new TokenInfo();
         const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
+        console.log(`Fetched ${tokens1M.length} unmigrated tokens from Redis, ${JSON.stringify(tokens1M)}`);
         tokens1M.forEach((item) => {
             info.token1MList.push(item.tokenAddress);
             info.tokenDexMap.set(item.tokenAddress, item.dex);
         });
         const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
+        console.log(`Fetched ${tokens24H.length} migrated tokens from Redis, ${JSON.stringify(tokens24H)}`);
         tokens24H.forEach((item) => {
             info.token24HList.push(item.tokenAddress);
             info.tokenDexMap.set(item.tokenAddress, item.dex);
@@ -143,6 +145,8 @@ export class NetByVolumeTask extends BaseTask{
         tokens3H.forEach((item) => {
             info.tokenDexMap.set(item.tokenAddress, item.dex);
         });
+        console.log(`Fetched ${tokens3H.length} 3-hour migrated tokens from Redis, ${JSON.stringify(tokens3H)}`);
+        console.log(`${JSON.stringify(info)}`);
         return info;
     }
 
