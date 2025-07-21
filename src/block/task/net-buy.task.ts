@@ -129,14 +129,14 @@ export class NetByVolumeTask extends BaseTask{
     private async getTokenInfo(): Promise<TokenInfo> {
         const info = new TokenInfo();
         const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
-        console.log(`Fetched ${tokens1M.length} unmigrated tokens from Redis, ${JSON.stringify(tokens1M)}`);
+        // console.log(`Fetched ${tokens1M.length} unmigrated tokens from Redis, ${JSON.stringify(tokens1M)}`);
         tokens1M.forEach((item) => {
             info.tokenList.add(item.address);
             info.token1MList.push(item.address);
             info.tokenDexMap.set(item.address, item.dex);
         });
         const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
-        console.log(`Fetched ${tokens24H.length} migrated tokens from Redis, ${JSON.stringify(tokens24H)}`);
+        // console.log(`Fetched ${tokens24H.length} migrated tokens from Redis, ${JSON.stringify(tokens24H)}`);
         tokens24H.forEach((item) => {
             info.tokenList.add(item.address);
             info.token24HList.push(item.address);
@@ -148,8 +148,8 @@ export class NetByVolumeTask extends BaseTask{
             info.tokenList.add(item.address);
             info.tokenDexMap.set(item.address, item.dex);
         });
-        console.log(`Fetched ${tokens3H.length} 3-hour migrated tokens from Redis, ${JSON.stringify(tokens3H)}`);
-        console.log(`${JSON.stringify(info)}`);
+        // console.log(`Fetched ${tokens3H.length} 3-hour migrated tokens from Redis, ${JSON.stringify(tokens3H)}`);
+        // console.log(`${JSON.stringify(info)}`);
         return info;
     }
 
