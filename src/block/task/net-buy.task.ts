@@ -36,14 +36,14 @@ class Result{
 }
 
 class TokenInfo {
-    tokenList: string[];
+    tokenList: Set<string>;
     migratedTokenList: string[];
     token24HList: string[];
     token1MList: string[];
     tokenDexMap: Map<string, number>;
 
     constructor() {
-        this.tokenList = [];
+        this.tokenList = new Set<string>();
         this.migratedTokenList = [];
         this.token24HList = [];
         this.token1MList = [];
@@ -131,18 +131,21 @@ export class NetByVolumeTask extends BaseTask{
         const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
         console.log(`Fetched ${tokens1M.length} unmigrated tokens from Redis, ${JSON.stringify(tokens1M)}`);
         tokens1M.forEach((item) => {
+            info.tokenList.add(item.address);
             info.token1MList.push(item.address);
             info.tokenDexMap.set(item.address, item.dex);
         });
         const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
         console.log(`Fetched ${tokens24H.length} migrated tokens from Redis, ${JSON.stringify(tokens24H)}`);
         tokens24H.forEach((item) => {
+            info.tokenList.add(item.address);
             info.token24HList.push(item.address);
             info.tokenDexMap.set(item.address, item.dex);
             info.migratedTokenList.push(item.address);
         });
         const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
         tokens3H.forEach((item) => {
+            info.tokenList.add(item.address);
             info.tokenDexMap.set(item.address, item.dex);
         });
         console.log(`Fetched ${tokens3H.length} 3-hour migrated tokens from Redis, ${JSON.stringify(tokens3H)}`);
@@ -184,7 +187,7 @@ export class NetByVolumeTask extends BaseTask{
             // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis cost ${Date.now() - begin}ms`);
             // const tokens = tokens1M.concat(tokens24H).concat(tokens3H);
             // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis`);
-            await this.summaryResult(volumeResult, new Set(tokenInfo.tokenList), swaps);
+            await this.summaryResult(volumeResult, tokenInfo.tokenList, swaps);
             const resultTokens = Array.from(volumeResult.keys()).map(key => key.split(':')[0]);
             if (resultTokens.length === 0) {
                 return;
