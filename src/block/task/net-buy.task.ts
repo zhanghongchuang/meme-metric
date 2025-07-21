@@ -58,7 +58,8 @@ enum NetBuySurgeTimeRange {
 }
 
 const MIN_VOLUME_MAP = {
-    [NetBuySurgeTimeRange.FIFTEEN_SECONDS]: [2000, 3000, 5000], // 15秒
+    [NetBuySurgeTimeRange.FIFTEEN_SECONDS]: [2000], // 15秒
+    // [NetBuySurgeTimeRange.FIFTEEN_SECONDS]: [2000, 3000, 5000], // 15秒
     [NetBuySurgeTimeRange.ONE_MINUTE]: [5000, 8000, 10000], // 1分钟
     [NetBuySurgeTimeRange.THREE_MINUTES]: [8000, 10000, 15000], // 3分钟
 }
