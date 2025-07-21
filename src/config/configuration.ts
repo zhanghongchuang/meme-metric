@@ -226,12 +226,6 @@ export default () => ({
       },
     ],
     channels: {
-      'channel-smarttag': {
-        prefetchCount: 10,
-      },
-      'channel-multi-block': {
-        prefetchCount: 2000,
-      },
       'channel-metric': {
         prefetchCount: 2000,
       },

@@ -20,12 +20,6 @@ export class BundlerTask extends BaseTask {
     private swaps: any[] = [];
     cacheIgnoreTokens: string[] = []; // 缓存忽略代币列表
 
-    // 使用 async-mutex 替换自定义锁
-    private dataMutex = new Mutex(); // 数据操作锁
-    private isProcessing: boolean = false; // 保留处理状态标志
-    private checkTimer: NodeJS.Timeout | null = null;
-
-
     constructor(
         userTagService: UserTagsService,
         ignoreTokens: string[] = [],

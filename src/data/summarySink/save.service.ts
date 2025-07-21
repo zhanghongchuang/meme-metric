@@ -27,7 +27,7 @@ export class DataSaveManager {
       this.logger.warn('No messages to process');
       return;
     }
-    this.logger.log(`Processing ${messages.length} messages`);
+    this.logger.log(`Processing ${messages.length} db messages`);
     const resultMap = new Map<string, SummaryResult>();
     let total = 0;
     messages.forEach((message) => {

@@ -35,6 +35,22 @@ class Result{
     }
 }
 
+class TokenInfo {
+    tokenList: string[];
+    migratedTokenList: string[];
+    token24HList: string[];
+    token1MList: string[];
+    tokenDexMap: Map<string, number>;
+
+    constructor() {
+        this.tokenList = [];
+        this.migratedTokenList = [];
+        this.token24HList = [];
+        this.token1MList = [];
+        this.tokenDexMap = new Map<string, number>();
+    }
+}
+
 enum NetBuySurgeTimeRange {
   FIFTEEN_SECONDS = 15, // 15秒
   ONE_MINUTE = 30, // 1分钟
@@ -110,6 +126,26 @@ export class NetByVolumeTask extends BaseTask{
         // }
     }
 
+    private async getTokenInfo(): Promise<TokenInfo> {
+        const info = new TokenInfo();
+        const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
+        tokens1M.forEach((item) => {
+            info.token1MList.push(item.tokenAddress);
+            info.tokenDexMap.set(item.tokenAddress, item.dex);
+        });
+        const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
+        tokens24H.forEach((item) => {
+            info.token24HList.push(item.tokenAddress);
+            info.tokenDexMap.set(item.tokenAddress, item.dex);
+            info.migratedTokenList.push(item.tokenAddress);
+        });
+        const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
+        tokens3H.forEach((item) => {
+            info.tokenDexMap.set(item.tokenAddress, item.dex);
+        });
+        return info;
+    }
+
     async onSchedule(): Promise<void> {
         if (this.running) {
             return;
@@ -117,12 +153,9 @@ export class NetByVolumeTask extends BaseTask{
         this.running = true;
         try{
             console.log(`Cleaning up old data for ${this.chain} net by volume task`);
-            const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
-            const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
-            const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
-            const allTokens = tokens1M.concat(tokens24H).concat(tokens3H);
-            for (const token of allTokens) {
-                const isMigrated = tokens24H.includes(token);
+            const tokenInfo = await this.getTokenInfo();
+            for (const token of tokenInfo.tokenList) {
+                const isMigrated = tokenInfo.migratedTokenList.includes(token);
                 const redisKey = this.getVolumeKey(token, isMigrated);
                 await this.clearTokenVolumeFromRedis(redisKey);
             }
@@ -140,14 +173,14 @@ export class NetByVolumeTask extends BaseTask{
             // const startTime = process.hrtime();
             const volumeResult = new Map<string, Map<number, Result>>();
             const begin = Date.now();
-            const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
-            const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
-            const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
+            const tokenInfo = await this.getTokenInfo();
+            // const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
+            // const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
+            // const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
             // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis cost ${Date.now() - begin}ms`);
-            const tokens = tokens1M.concat(tokens24H).concat(tokens3H);
+            // const tokens = tokens1M.concat(tokens24H).concat(tokens3H);
             // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis`);
-            await this.summaryResult(volumeResult, new Set(tokens), swaps);
-            const stats: TokenStatsEntity[] = [];
+            await this.summaryResult(volumeResult, new Set(tokenInfo.tokenList), swaps);
             const resultTokens = Array.from(volumeResult.keys()).map(key => key.split(':')[0]);
             if (resultTokens.length === 0) {
                 return;
@@ -161,7 +194,7 @@ export class NetByVolumeTask extends BaseTask{
             )
             // console.log(`Fetched token info for ${resultTokens.length} tokens from Redis and OSS cost ${Date.now() - beginFetch}ms`);
 
-            const beginHandle = Date.now();
+            // const beginHandle = Date.now();
             await Promise.all(Array.from(volumeResult.entries()).map(async ([key, values]) => {
                 const tokenKeyTag = key.split(':');
                 const token = tokenKeyTag[0];
@@ -179,16 +212,16 @@ export class NetByVolumeTask extends BaseTask{
                     tag = tokenKeyTag[1];
                 }
                 
-                const totalSupply = parseFloat(cacheTokenList?.totalSupply || cacheTokenList?.total_supply || '1000000000') || 1000000000;
+                // const totalSupply = parseFloat(cacheTokenList?.totalSupply || cacheTokenList?.total_supply || '1000000000') || 1000000000;
                 await Promise.all(Array.from(values.entries()).map(async ([time, value]) => {
                     const totalBuyVolume = value.totalBuyVolume;
                     const totalSellVolume = value.totalSellVolume;
                     const price = value.price || 0;
                     const netByVolume = BigNumber(totalBuyVolume).minus(BigNumber(totalSellVolume));
-                    const isMigrated = tokens24H.includes(token);
+                    const isMigrated = tokenInfo.migratedTokenList.includes(token);
                     const redisKey = this.getVolumeKey(token, isMigrated);
-                    if (tag == '' && (tokens1M.includes(token) || tokens24H.includes(token))) {
-                        await this.updateTokenVolume(redisKey, time, netByVolume.toNumber());                        
+                    if (tag == '' && (tokenInfo.token1MList.includes(token) || tokenInfo.token24HList.includes(token))) {
+                        await this.updateTokenVolume(redisKey, time, netByVolume.toNumber());
                         await this.queue.add('netByVolume', token,
                             {
                                 jobId: token,
@@ -198,6 +231,7 @@ export class NetByVolumeTask extends BaseTask{
                         const netBuyList = await this.generateBroadcaseMessage(
                             tokenVolumes, {
                                 tokenAddress: token,
+                                dex: tokenInfo.tokenDexMap.get(token),
                                 price: price
                             }
                         );
@@ -206,40 +240,9 @@ export class NetByVolumeTask extends BaseTask{
                             await this.broadcastMessage(`surge`, 'netBuyVolumeUpdate', message);
                         }));
                     }
-                    const configValue = this.configService.get('ENABLE_NET_BY_VOLUME_SAVE')
-                    if (configValue === 'true' || configValue === true) {
-                        const entity = new TokenStatsEntity();
-                        entity.token_address = token;
-                        entity.wallet_tag = tag;
-                        entity.buy_tx = value.buyTx;
-                        entity.sell_tx = value.sellTx;
-                        entity.net_buy_tx = value.buyTx - value.sellTx;
-                        entity.total_buy_volume = totalBuyVolume;
-                        entity.total_sell_volume = totalSellVolume;
-                        entity.net_buy_volume = netByVolume.toNumber();
-                        entity.stats_time = time;
-                        entity.dex = isMigrated ? 1 : 0;
-                        entity.holders = 0;
-                        entity.create_time = 0;
-                        entity.mcap = BigNumber(price).times(totalSupply).toNumber();
-                        if (cacheTokenList){
-                            entity.holders = parseInt(cacheTokenList.holders || '0', 0) || 0;
-                            entity.create_time = parseInt(cacheTokenList.createTime || '0', 0) || 0;
-                        }
-                        if (tokens3H.includes(token)) {
-                            const entityCopy = Object.assign(new TokenStatsEntity(), entity);
-                            entityCopy.wallet_tag = `3H${tag}`;
-                            stats.push(entityCopy);
-                        }
-                        stats.push(entity);
-                    }
                 }));
             }));
-            // console.log(`Handled token info and generated messages for ${volumeResult.size} tokens in ${Date.now() - beginHandle}ms`);
-            if (stats.length > 0) {
-                const repository = this.target.getRepository(TokenStatsEntity);
-                await repository.save(stats);
-            }
+            
         } catch (error) {
             console.error('Error in handleNetByVolume:', error);
         }
@@ -375,7 +378,7 @@ export class NetByVolumeTask extends BaseTask{
         const maxPrice = await this.targetRedis.hget(priceKey, 'maxPrice');
         if (price > parseFloat(maxPrice || '0')) {
             await this.targetRedis.hset(priceKey, 'maxPrice', price);
-            console.log(`Updating max price for ${tokenAddress} to ${price}`);
+            console.log(`Updating max price for ${priceKey} to ${price}`);
         }
     }
 
@@ -408,6 +411,7 @@ export class NetByVolumeTask extends BaseTask{
             const priceInfo = await this.targetRedis.hgetall(priceKey);
             const initPrice = parseFloat(priceInfo?.price || '0');
             const maxPrice = parseFloat(priceInfo?.maxPrice || '0');
+            const notifyTimes = parseInt(priceInfo?.notifyTimes || '0') + 1;
             const pipeline = this.targetRedis.pipeline();
             if (!initPrice){
                 // 如果没有初始价格，则设置为当前价格
@@ -415,6 +419,7 @@ export class NetByVolumeTask extends BaseTask{
                 pipeline.hset(priceKey, 'maxPrice', signal.price);
                 console.log(`Setting initial price for ${signal.tokenAddress} at ${signal.price}`);
             }
+            pipeline.hset(priceKey, 'notifyTimes', notifyTimes);
             pipeline.expire(priceKey, 60 * 60 * 24); // 设置价格信息的过期时间为24小时
             // 设置限流键，过期时间为signal.timeRange
             pipeline.set(rateLimitKey, signal.timestamp, 'EX', signal.timeRange);
@@ -428,6 +433,7 @@ export class NetByVolumeTask extends BaseTask{
                 tokenInfo: cacheTokenList,
                 initPrice: initPrice || price,
                 maxPrice: maxPrice || price,
+                notifyTimes: notifyTimes,
             }
             finalSinals.push(message);
         }
@@ -440,7 +446,7 @@ export class NetByVolumeTask extends BaseTask{
     }
 
     private async addTokenList(message) {
-        const tokenListKey = `surgeData:${this.chain}:netBuyVolume:publishTokenList`;
+        const tokenListKey = `surgeData:${this.chain}:netBuyVolume:publishTokenList:${message['dex']}`;
         const dataCacheKey = `surgeData:${this.chain}:${message['timeRange']}:${message['netBuyAmount']}:${message['tokenAddress']}`;
         const tokenInfoKey = `token_list:${message['tokenAddress']}`;
         // 构建所有符合 dataCacheKey 格式的 key 列表
