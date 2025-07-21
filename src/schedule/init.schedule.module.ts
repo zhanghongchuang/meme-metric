@@ -16,7 +16,7 @@ import { BscAnalysisScheduleService } from './analysis/bsc.analysis.schedule';
     // BullModule.registerQueueAsync(createMemeQueueConfig('mm-evm-56-pnl', 'memestats_bsc')),
   ],
   providers: [BscNewWalletSchedule, SolNewWalletSchedule,
-     BscSmartMoneySchedule, SolSmartMoneySchedule, FixBuySellCountCommand,
+     BscSmartMoneySchedule, SolSmartMoneySchedule,
      SolAnalysisScheduleService
   ],
 })
