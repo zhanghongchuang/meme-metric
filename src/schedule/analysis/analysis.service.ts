@@ -12,6 +12,8 @@ import { AnalysisSwapInfo } from './common/struct';
 import { OnModuleInit } from '@nestjs/common';
 import { KOLInfoEntity } from 'src/database/entity/kol.info.entity';
 import { ClickHouseService } from 'src/database/clickhouse.service';
+import BigNumber from 'bignumber.js';
+
 
 export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
     redis: Redis;
