@@ -202,6 +202,7 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
                     time,
                     swap.wallet_type
                 );
+                obj.volume = swap.volume;
                 swapMap.set(key, obj);
             } else {
                 existingSwap.volume = Number(BigNumber(existingSwap.volume || 0).plus(swap.volume).toFixed(18));
