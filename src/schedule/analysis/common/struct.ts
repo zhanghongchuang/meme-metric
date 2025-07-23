@@ -4,6 +4,7 @@ export class AnalysisSwapInfo{
     side: 'buy' | 'sell';
     walletType: 'kol' | 'monitor';
     tradeTime: number;
+    volume: number;
 
     constructor(walletAddress: string, tokenAddress: string, side: 'buy' | 'sell',
         tradeTime: number, walletType: 'kol' | 'monitor') {
@@ -12,6 +13,7 @@ export class AnalysisSwapInfo{
         this.side = side;
         this.tradeTime = tradeTime;
         this.walletType = walletType;
+        this.volume = 0; // Default value, can be set later
     }
 
     getUniqueKey(): string {

@@ -2,8 +2,8 @@ import { Cron } from '@nestjs/schedule';
 import { SwapEntity } from 'src/database/entity/swap.entity';
 import {Redis} from "ioredis";
 import { DataSource, EntityManager } from "typeorm";
-import { getStartOfMinute, MeasureTime } from "src/utils/helper";
-import { AnalysisSwapEntity } from "src/database/entity/analysis.swap.entity";
+import { generateIncrInsertOnDuplicateSQL, getStartOfMinute, MeasureTime } from "src/utils/helper";
+import { ANALYSIS_SWAP_FIELDS, ANALYSIS_SWAP_UNIQUE_COLUMNS, AnalysisSwapEntity } from "src/database/entity/analysis.swap.entity";
 import { AnalysisSwapEntity1M } from "src/database/entity/analysis.swap.1m.entity";
 import { AnalysisSwapEntity1H } from "src/database/entity/analysis.swap.1h.entity";
 import { AnalysisSwapEntity1D } from "src/database/entity/analysis.swap.1d.entity";
@@ -129,17 +129,24 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
             }
             let side: 'buy' | 'sell';
             let token: string;
+            let volume: number;
             if (this.ignoreTokens.includes(swap.from_token)) {
                 side = 'buy';
                 token = swap.to_token;
+                volume = BigNumber(swap.to_ui_amount || 0).multipliedBy(BigNumber(swap.to_token_price || 0)).toNumber();
             } else {
                 side = 'sell';
                 token = swap.from_token;
+                volume = BigNumber(swap.from_ui_amount || 0).multipliedBy(BigNumber(swap.from_token_price || 0)).toNumber();
             }
             const obj = new AnalysisSwapInfo(swap.initiator, token, side, swap.block_time, walletType);
+            obj.volume = Number(BigNumber(volume || 0).toFixed(18));
             const key = obj.getUniqueKey();
-            if (!resultMap.has(key)) {
+            const existingSwap = resultMap.get(key);
+            if (!existingSwap) {
                 resultMap.set(key, obj);
+            } else {
+                existingSwap.volume = Number(BigNumber(existingSwap.volume || 0).plus(obj.volume).toFixed(18));
             }
         });
         await this.targetDatasource.transaction(async (manager: EntityManager) => {
@@ -150,136 +157,110 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
         });
     }
 
-        async isKol(walletAddress: string[]): Promise<Map<string, boolean>> {
-            const key = `${this.chain}:kol`;
-            const kolMap = new Map<string, boolean>();
-            const batchSize = 10; // Adjust batch size as needed
-            for (let i = 0; i < walletAddress.length; i += batchSize) {
-                const batch = walletAddress.slice(i, i + batchSize);
-                const results = await Promise.all(
-                    batch.map(address => this.redis.sismember(key, address))
-                );
-                batch.forEach((address, idx) => {
-                    kolMap.set(address, results[idx] === 1);
-                });
-            }
-            return kolMap;
-        }
-    
-        async isMonitor(walletAddress: string[]): Promise<Map<string, boolean>> {
-            const rt = new Map<string, boolean>();
-            const data = await this.monitorDatasource.getRepository(WalletMonitorEntity)
-                .createQueryBuilder('monitor')
-                .select('monitor.tracked_wallet_address', 'wallet_address')
-                .where('monitor.tracked_wallet_address IN (:...wallets)', { wallets: walletAddress })
-                .getRawMany();
-            data.forEach(item => {
-                rt.set(item.wallet_address, true);
+    async isKol(walletAddress: string[]): Promise<Map<string, boolean>> {
+        const key = `${this.chain}:kol`;
+        const kolMap = new Map<string, boolean>();
+        const batchSize = 10; // Adjust batch size as needed
+        for (let i = 0; i < walletAddress.length; i += batchSize) {
+            const batch = walletAddress.slice(i, i + batchSize);
+            const results = await Promise.all(
+                batch.map(address => this.redis.sismember(key, address))
+            );
+            batch.forEach((address, idx) => {
+                kolMap.set(address, results[idx] === 1);
             });
-            return rt;
         }
-    
-        mergeSwapInfo(swaps: AnalysisSwapInfo[], minute){
-            const swapMap = new Map<string, AnalysisSwapInfo>();
-            for (const swap of swaps) {
-                const time = getStartOfMinute(swap.tradeTime, minute);
-                const key = `${swap.walletAddress}-${swap.tokenAddress}-${time}`;
-                if (!swapMap.has(key)) {
-                    const obj = new AnalysisSwapInfo(
-                        swap.walletAddress,
-                        swap.tokenAddress,
-                        swap.side,
-                        time,
-                        swap.walletType
-                    );
-                    swapMap.set(key, obj);
-                }
+        return kolMap;
+    }
+
+    async isMonitor(walletAddress: string[]): Promise<Map<string, boolean>> {
+        const rt = new Map<string, boolean>();
+        const data = await this.monitorDatasource.getRepository(WalletMonitorEntity)
+            .createQueryBuilder('monitor')
+            .select('monitor.tracked_wallet_address', 'wallet_address')
+            .where('monitor.tracked_wallet_address IN (:...wallets)', { wallets: walletAddress })
+            .getRawMany();
+        data.forEach(item => {
+            rt.set(item.wallet_address, true);
+        });
+        return rt;
+    }
+
+    mergeSwapInfo(swaps: AnalysisSwapInfo[], minute){
+        const swapMap = new Map<string, AnalysisSwapInfo>();
+        for (const swap of swaps) {
+            const time = getStartOfMinute(swap.tradeTime, minute);
+            const key = `${swap.walletAddress}-${swap.tokenAddress}-${time}`;
+            const existingSwap = swapMap.get(key);
+            if (!existingSwap) {
+                const obj = new AnalysisSwapInfo(
+                    swap.walletAddress,
+                    swap.tokenAddress,
+                    swap.side,
+                    time,
+                    swap.walletType
+                );
+                swapMap.set(key, obj);
+            } else {
+                existingSwap.volume = Number(BigNumber(existingSwap.volume || 0).plus(swap.volume).toFixed(18));
             }
-            return Array.from(swapMap.values());
         }
-    
-        private async saveSwapsToDB(
-            manager: EntityManager,
-            kolSwaps: AnalysisSwapInfo[],
-        ){
-            if (kolSwaps.length == 0){
-                return;
+        return Array.from(swapMap.values());
+    }
+
+    private async saveSwapsToDB(
+        manager: EntityManager,
+        kolSwaps: AnalysisSwapInfo[],
+    ){
+        if (kolSwaps.length == 0){
+            return;
+        }
+        const spColumms = {
+                wallet_address: 'VALUES(wallet_address)',
+                trade_time: 'VALUES(trade_time)',
+                token_address: 'VALUES(token_address)',
+                wallet_type: 'VALUES(wallet_type)',
+                side: 'VALUES(side)',
+                updated_at: 'VALUES(updated_at)',
             }
-            const tasks: any[] = []
-            tasks.push(
-                manager
-                    .getRepository(AnalysisSwapEntity)
-                    .createQueryBuilder()
-                    .insert()
-                    .values(
-                        kolSwaps.map((swap) => ({
-                            wallet_address: swap.walletAddress,
-                            token_address: swap.tokenAddress,
-                            wallet_type: swap.walletType,
-                            trade_time: swap.tradeTime,
-                            side: swap.side,
-                        }))
-                    )
-                    .orIgnore()
-                    .execute()
-            );
-            // 1分钟
-            tasks.push(
-                manager
-                    .getRepository(AnalysisSwapEntity1M)
-                    .createQueryBuilder()
-                    .insert()
-                    .values(
-                        this.mergeSwapInfo(kolSwaps, 1).map((swap) => ({
-                            wallet_address: swap.walletAddress,
-                            token_address: swap.tokenAddress,
-                            wallet_type: swap.walletType,
-                            trade_time: swap.tradeTime,
-                            side: swap.side,
-                        }))
-                    )
-                    .orIgnore()
-                    .execute()
-            );
-            // 1小时
-            tasks.push(
-                manager
-                    .getRepository(AnalysisSwapEntity1H)
-                    .createQueryBuilder()
-                    .insert()
-                    .values(
-                        this.mergeSwapInfo(kolSwaps, 60).map((swap) => ({
-                            wallet_address: swap.walletAddress,
-                            token_address: swap.tokenAddress,
-                            wallet_type: swap.walletType,
-                            trade_time: swap.tradeTime,
-                            side: swap.side,
-                        }))
-                    )
-                    .orIgnore()
-                    .execute()
-            );
-            // 1天
-            tasks.push(
-                manager
-                    .getRepository(AnalysisSwapEntity1D)
-                    .createQueryBuilder()
-                    .insert()
-                    .values(
-                        this.mergeSwapInfo(kolSwaps, 60 * 24).map((swap) => ({
-                            wallet_address: swap.walletAddress,
-                            token_address: swap.tokenAddress,
-                            wallet_type: swap.walletType,
-                            trade_time: swap.tradeTime,
-                            side: swap.side,
-    
-                        }))
-                    )
-                    .orIgnore()
-                    .execute()
-            );
-            await Promise.all(tasks);
-    
-        }
+        const tasks: any[] = []
+        const sql = generateIncrInsertOnDuplicateSQL(
+            'analysis_swap',
+            ANALYSIS_SWAP_FIELDS,
+            ANALYSIS_SWAP_UNIQUE_COLUMNS,
+            kolSwaps,
+            spColumms
+        )
+        tasks.push(manager.query(sql.sql, sql.values));
+        // 1分钟
+        const sql2 = generateIncrInsertOnDuplicateSQL(
+            'analysis_swap_1m',
+            ANALYSIS_SWAP_FIELDS,
+            ANALYSIS_SWAP_UNIQUE_COLUMNS,
+            this.mergeSwapInfo(kolSwaps, 1),
+            spColumms
+        )
+        tasks.push(manager.query(sql2.sql, sql2.values));
+        // 1小时
+        const sql1h = generateIncrInsertOnDuplicateSQL(
+            'analysis_swap_1h',
+            ANALYSIS_SWAP_FIELDS,
+            ANALYSIS_SWAP_UNIQUE_COLUMNS,
+            this.mergeSwapInfo(kolSwaps, 60),
+            spColumms
+        )
+        tasks.push(manager.query(sql1h.sql, sql1h.values));
+        // 1天
+        const sql1d = generateIncrInsertOnDuplicateSQL(
+            'analysis_swap_1d',
+            ANALYSIS_SWAP_FIELDS,
+            ANALYSIS_SWAP_UNIQUE_COLUMNS,
+            this.mergeSwapInfo(kolSwaps, 60 * 24),
+            spColumms
+        )
+        tasks.push(manager.query(sql1d.sql, sql1d.values));
+        await Promise.all(tasks);
+
+    }
 
 }

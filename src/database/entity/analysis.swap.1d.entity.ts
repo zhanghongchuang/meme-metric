@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 import { CommonEntity } from "./common.entity";
 
-export const ANALYSIS_SWAP_UNIQUE_COLUMNS = ['wallet_address', 'token_address', 'trade_time', 'wallet_type'];
+export const ANALYSIS_SWAP_UNIQUE_COLUMNS = ['wallet_address', 'token_address', 'trade_time', 'wallet_type', 'side'];
 export const ANALYSIS_SWAP_INDEX_COLUMNS = ['token_address', 'trade_time'];
 
 
@@ -22,7 +22,10 @@ export class AnalysisSwapEntity1D extends CommonEntity{
     @PrimaryColumn('int', { comment: '交易时间', default: 0 })
     trade_time: number;
 
-    @Column('varchar', { length: 64, comment: '交易方向', default: '' })
+    @PrimaryColumn('varchar', { length: 64, comment: '交易方向', default: '' })
     side: string;
+
+    @Column('decimal', { precision: 36, scale: 18, comment: '交易金额', default: 0 })
+    volume: number;
 
 }

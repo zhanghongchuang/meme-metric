@@ -177,17 +177,8 @@ export class NetByVolumeTask extends BaseTask{
     public async onMessage(swaps: any[]): Promise<void> {
         const totalBegin = Date.now();
         try{
-            // console.log('handleNetByVolume triggered', this.chain);
-            // const startTime = process.hrtime();
             const volumeResult = new Map<string, Map<number, Result>>();
-            const begin = Date.now();
             const tokenInfo = await this.getTokenInfo();
-            // const tokens1M = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_unmigrated_list`) || '[]');
-            // const tokens24H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_list`) || '[]');
-            // const tokens3H = JSON.parse(await this.commonRedis.get(`${this.chain}:surge_token_migrated_3h_list`) || '[]');
-            // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis cost ${Date.now() - begin}ms`);
-            // const tokens = tokens1M.concat(tokens24H).concat(tokens3H);
-            // console.log(`Fetched ${tokens1M.length} + ${tokens24H.length} + ${tokens3H.length} tokens from Redis`);
             await this.summaryResult(volumeResult, tokenInfo.tokenList, swaps);
             const resultTokens = Array.from(volumeResult.keys()).map(key => key.split(':')[0]);
             if (resultTokens.length === 0) {
