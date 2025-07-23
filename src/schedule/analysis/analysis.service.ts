@@ -191,16 +191,16 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
     mergeSwapInfo(swaps: AnalysisSwapInfo[], minute){
         const swapMap = new Map<string, AnalysisSwapInfo>();
         for (const swap of swaps) {
-            const time = getStartOfMinute(swap.tradeTime, minute);
-            const key = `${swap.walletAddress}-${swap.tokenAddress}-${time}`;
+            const time = getStartOfMinute(swap.trade_time, minute);
+            const key = `${swap.wallet_address}-${swap.token_address}-${time}`;
             const existingSwap = swapMap.get(key);
             if (!existingSwap) {
                 const obj = new AnalysisSwapInfo(
-                    swap.walletAddress,
-                    swap.tokenAddress,
+                    swap.wallet_address,
+                    swap.token_address,
                     swap.side,
                     time,
-                    swap.walletType
+                    swap.wallet_type
                 );
                 swapMap.set(key, obj);
             } else {
