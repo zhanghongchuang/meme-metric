@@ -11,6 +11,7 @@ export const ANALYSIS_SWAP_FIELDS = [
     'wallet_type',
     'side',
     'volume',
+    'amount'
 ];
 
 @Entity('analysis_swap')
@@ -35,5 +36,8 @@ export class AnalysisSwapEntity extends CommonEntity{
 
     @Column('decimal', { precision: 36, scale: 18, comment: '交易金额', default: 0 })
     volume: number;
+
+    @Column('decimal', { precision: 62, scale: 18, comment: '交易数量', default: 0 })
+    amount: number;
 
 }

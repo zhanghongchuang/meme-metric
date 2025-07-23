@@ -132,23 +132,28 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
             let side: 'buy' | 'sell';
             let token: string;
             let volume: number;
+            let amount: number;
             if (this.ignoreTokens.includes(swap.from_token)) {
                 side = 'buy';
                 token = swap.to_token;
+                amount = Number(swap.to_ui_amount);
                 volume = BigNumber(swap.to_ui_amount || 0).multipliedBy(BigNumber(swap.to_token_price || 0)).toNumber();
             } else {
                 side = 'sell';
                 token = swap.from_token;
+                amount = Number(swap.from_ui_amount);
                 volume = BigNumber(swap.from_ui_amount || 0).multipliedBy(BigNumber(swap.from_token_price || 0)).toNumber();
             }
             const obj = new AnalysisSwapInfo(swap.initiator, token, side, swap.block_time, walletType);
             obj.volume = Number(BigNumber(volume || 0).toFixed(18));
+            obj.amount = Number(BigNumber(amount || 0).toFixed(18));
             const key = obj.getUniqueKey();
             const existingSwap = resultMap.get(key);
             if (!existingSwap) {
                 resultMap.set(key, obj);
             } else {
                 existingSwap.volume = Number(BigNumber(existingSwap.volume || 0).plus(obj.volume).toFixed(18));
+                existingSwap.amount = Number(BigNumber(existingSwap.amount || 0).plus(obj.amount).toFixed(18));
             }
         });
         await this.targetDatasource.transaction(async (manager: EntityManager) => {
@@ -203,9 +208,11 @@ export class AnalysisService<T extends SwapEntity> implements OnModuleInit {
                     swap.wallet_type
                 );
                 obj.volume = swap.volume;
+                obj.amount = swap.amount;
                 swapMap.set(key, obj);
             } else {
                 existingSwap.volume = Number(BigNumber(existingSwap.volume || 0).plus(swap.volume).toFixed(18));
+                existingSwap.amount = Number(BigNumber(existingSwap.amount || 0).plus(swap.amount).toFixed(18));
             }
         }
         return Array.from(swapMap.values());
